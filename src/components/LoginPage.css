@@ -1,0 +1,116 @@
+/* src/components/LoginPage.css */
+.login-page {
+    padding: 25px;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+.login-page h2 {
+    font-size: 2.2rem;
+    color: var(--primary-color);
+    margin-bottom: 25px;
+    font-weight: 700;
+}
+
+.login-page p {
+    margin-bottom: 30px;
+}
+
+.auth-button.google {
+    background-color: var(--primary-color);
+    color: var(--text-color-white);
+    margin-bottom: 25px; /* Espaciado entre botón Google y formulario */
+    width: 100%;
+    max-width: 350px;
+}
+
+.auth-button.google:hover {
+    background-color: var(--primary-dark);
+    transform: translateY(-2px);
+}
+
+.google-icon {
+    width: 24px;
+    height: 24px;
+}
+
+.auth-form {
+    width: 100%;
+    max-width: 350px;
+    text-align: left;
+    border-top: 1px solid var(--border-color);
+    padding-top: 25px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.auth-form h3 {
+    margin-top: 0;
+    color: var(--primary-color);
+    text-align: center;
+}
+
+.auth-form label {
+    display: block;
+    margin-bottom: 2px;
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.auth-form input[type="email"],
+.auth-form input[type="password"] {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 1rem;
+    box-sizing: border-box; /* Incluir padding y border en el ancho */
+}
+
+.auth-form input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.2);
+}
+
+.auth-form button[type="submit"] {
+    background-color: var(--primary-color);
+    color: var(--text-color-white);
+    margin-top: 15px;
+}
+
+.auth-form button[type="submit"]:hover {
+    background-color: var(--primary-dark);
+    transform: translateY(-1px);
+}
+
+.auth-form .toggle-link {
+    font-size: 0.9rem;
+    color: var(--primary-color);
+    text-decoration: none;
+    margin-top: 10px;
+    cursor: pointer;
+    text-align: center;
+}
+.auth-form .toggle-link:hover {
+    text-decoration: underline;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+    .login-page h2 {
+        font-size: 1.8rem;
+    }
+    .auth-button, .auth-form {
+        max-width: 90%;
+    }
+    .auth-button.google {
+        padding: 12px 20px;
+        font-size: 1rem;
+    }
+}

@@ -1,0 +1,162 @@
+/* src/components/ChatPage.css */
+.chat-page {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    padding: 25px;
+    box-sizing: border-box;
+    overflow: hidden; /* Para manejar el scroll interno */
+}
+
+.chat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 15px;
+    margin-bottom: 15px;
+    border-bottom: 1px solid var(--border-color);
+    flex-wrap: wrap; /* Para responsive */
+}
+
+.chat-header h3 {
+    margin: 0;
+    font-size: 1.8rem;
+    color: var(--primary-color);
+    font-weight: 700;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    font-size: 0.9rem;
+    color: var(--secondary-color);
+    flex-wrap: wrap; /* Para responsive */
+    margin-left: auto; /* Empuja a la derecha */
+}
+.user-info span {
+    word-break: break-all; /* Para emails largos */
+}
+
+.chat-header button {
+    background-color: var(--secondary-color);
+    color: var(--text-color-white);
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    border-radius: 5px;
+}
+
+.chat-header button:hover {
+    background-color: #5a6268;
+}
+
+.chat-messages {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding-right: 10px; /* Para el scrollbar si hay */
+    margin-bottom: 15px;
+}
+
+.message-bubble {
+    padding: 12px 18px;
+    border-radius: 18px;
+    margin-bottom: 10px;
+    max-width: 85%;
+    word-wrap: break-word; /* Para que el texto largo se ajuste */
+    line-height: 1.5;
+    box-shadow: 0 2px 5px var(--shadow-light);
+}
+
+.message-bubble.user {
+    background-color: var(--chat-user-bg);
+    margin-left: auto; /* Alinea a la derecha */
+    border-bottom-right-radius: 2px; /* Esquina de la burbuja */
+    color: var(--text-color-light);
+}
+
+.message-bubble.bot {
+    background-color: var(--chat-bot-bg);
+    margin-right: auto; /* Alinea a la izquierda */
+    border-bottom-left-radius: 2px; /* Esquina de la burbuja */
+    color: var(--text-color-light);
+}
+
+.message-bubble.error {
+    background-color: #fcebeb; /* Fondo de error más claro */
+    color: var(--error-color); /* Texto rojo */
+    border: 1px solid var(--error-color);
+}
+
+.loading-indicator {
+    text-align: center;
+    font-style: italic;
+    color: var(--secondary-color);
+    padding: 10px 0;
+}
+
+.chat-input-area {
+    display: flex;
+    gap: 10px;
+    padding-top: 15px;
+    border-top: 1px solid var(--border-color);
+}
+
+.chat-input-area input {
+    flex-grow: 1;
+    padding: 12px 18px;
+    border: 1px solid var(--border-color);
+    border-radius: 25px;
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.chat-input-area input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.2);
+}
+
+.chat-input-area button {
+    background-color: var(--primary-color);
+    color: var(--text-color-white);
+    padding: 12px 20px;
+    border-radius: 25px;
+}
+
+.chat-input-area button:hover {
+    background-color: var(--primary-dark);
+    transform: translateY(-1px);
+}
+
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+    .chat-page {
+        padding: 15px;
+    }
+    .chat-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .chat-header h3 {
+        width: 100%;
+        text-align: center;
+        margin-bottom: 10px;
+    }
+    .user-info {
+        width: 100%;
+        justify-content: center;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+    .user-info button {
+        margin-left: 0;
+    }
+    .message-bubble {
+        max-width: 100%; /* Permite que las burbujas ocupen más espacio en móviles */
+    }
+    .chat-input-area input, .chat-input-area button {
+        padding: 10px 15px;
+        font-size: 0.9rem;
+    }
+}
