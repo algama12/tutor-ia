@@ -82,20 +82,48 @@ function ChatPage({ user }) {
     return () => unsubscribeMessages();
   }, [user, currentConversationId]); // Reacciona al cambio de usuario o de conversación activa
 
+  const generateConversationTitle = async (convId, firstMessageText) => {
+    try {
+        const response = await fetch('/api/chat-tutor', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                message: firstMessageText, // Enviamos el primer mensaje para el contexto
+                conversationContext: [], // No hay contexto previo, solo el primer mensaje
+                generateTitle: true // Indicador para la API
+            }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `Error al generar título (${response.status})`);
+        }
+        const data = await response.json();
+        const newTitle = data.text; // El título generado por la IA
+
+        // Actualiza el título en Firestore
+        await setDoc(doc(db, `users/${user.uid}/conversations/${convId}`), { title: newTitle }, { merge: true });
+        setCurrentConversationTitle(newTitle); // Actualiza el título en el estado local
+    } catch (error) {
+        console.error("Error al generar título de conversación:", error);
+        // Si falla, se queda con el título "Nueva Conversación HH:MM:SS"
+    }
+};
+
   // --- FUNCIÓN: Iniciar una nueva conversación ---
   const startNewConversation = async () => {
     setIsLoading(true);
     try {
       const newConversationRef = doc(collection(db, `users/${user.uid}/conversations`));
       const newConversationData = {
-        title: 'Nueva Conversación ' + new Date().toLocaleTimeString(), // Título temporal
+        title: 'Nueva Conversación ' + new Date().toLocaleTimeString(), // Título temporal actual
         createdAt: Date.now(),
       };
       await setDoc(newConversationRef, newConversationData);
       setCurrentConversationId(newConversationRef.id);
       setCurrentConversationTitle(newConversationData.title);
       setChatHistory([]); // Vaciamos el historial para la nueva conversación
-      addMessageToChat('bot', '¡Hola! Soy tu tutor académico. ¿En qué puedo ayudarte hoy?', newConversationRef.id); // Mensaje inicial
+      // No añadir mensaje inicial aquí, se hará cuando la IA responda por primera vez al primer mensaje.
     } catch (error) {
       console.error("Error al iniciar nueva conversación:", error);
       alert("Error al iniciar nueva conversación.");
@@ -132,9 +160,9 @@ function ChatPage({ user }) {
 
 
   // --- FUNCIÓN: Enviar Mensaje ---
-  const handleSendMessage = async (e) => {
+const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!message.trim() || isLoading || !currentConversationId) return; // No enviar si no hay conversación activa
+    if (!message.trim() || isLoading || !currentConversationId) return;
 
     const userMessage = {
       text: message.trim(),
@@ -142,30 +170,27 @@ function ChatPage({ user }) {
       timestamp: Date.now(),
     };
     // No añadir al historial local directamente, Firestore lo hará.
-    // setChatHistory(prev => [...prev, userMessage]); // <--- ELIMINADO para evitar duplicados con onSnapshot
-    setMessage('');
+    setMessage(''); // Limpiar input antes de enviar
+
     setIsLoading(true);
 
     try {
+      const isFirstMessage = chatHistory.length === 0 && currentConversationTitle.startsWith('Nueva Conversación');
+
       // Guardar el mensaje del usuario en Firestore en la conversación actual
       await addDoc(collection(db, `users/${user.uid}/conversations/${currentConversationId}/messages`), userMessage);
 
-      // --- PREPARAR CONTEXTO PARA LA IA ---
-      // Mapear el historial actual para que la API lo entienda (solo 'user' y 'assistant')
-      const conversationContextForAPI = chatHistory.map(msg => ({
-        role: msg.sender === 'user' ? 'user' : 'assistant', // 'bot' -> 'assistant'
-        content: msg.text
-      }));
-
+      // PREPARAR CONTEXTO PARA LA IA
+      const currentChatContext = [...chatHistory, userMessage]; // Incluir el mensaje actual del usuario en el contexto
+      
       const response = await fetch('/api/chat-tutor', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        // Enviamos el nuevo mensaje Y el contexto de la conversación
         body: JSON.stringify({
           message: userMessage.text,
-          conversationContext: conversationContextForAPI // <--- AHORA ENVIAMOS EL CONTEXTO
+          conversationContext: currentChatContext
         }),
       });
 
@@ -183,18 +208,13 @@ function ChatPage({ user }) {
       // Guardar la respuesta del bot en Firestore
       await addDoc(collection(db, `users/${user.uid}/conversations/${currentConversationId}/messages`), botResponse);
 
-      // Si es la primera interacción y el título es genérico, proponemos uno nuevo
-      if (chatHistory.length === 0 && currentConversationTitle.startsWith('Nueva Conversación')) {
-        // En una app real, podrías pedir a la IA que genere un título para la conversación basado en el primer mensaje
-        const newTitle = userMessage.text.substring(0, 30) + '...'; // Ejemplo simple
-        await setDoc(doc(db, `users/${user.uid}/conversations/${currentConversationId}`), { title: newTitle }, { merge: true });
-        setCurrentConversationTitle(newTitle); // Actualiza el título en el estado
+      // Si es la primera interacción y el título es genérico, generar el título con la IA
+      if (isFirstMessage) {
+        generateConversationTitle(currentConversationId, userMessage.text); // Llamar a la función
       }
 
     } catch (error) {
-      console.error('Error al llamar a la función de chat:', error);
-      // Añadir mensaje de error localmente al historial
-      addMessageToChat('bot', `Error: ${error.message || 'Ocurrió un error al comunicarse con el tutor.'}`, null, true);
+     // ... (manejo de errores) ...
     } finally {
       setIsLoading(false);
     }

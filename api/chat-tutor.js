@@ -1,5 +1,6 @@
 // api/chat-tutor.js
 import OpenAI from 'openai';
+import { stripHtml } from 'string-strip-html';
 
 const THALARIS_API_KEY = process.env.THALARIS_API_KEY;
 const BASE_URL = "https://llmapi.thalarislabs.com";
@@ -16,7 +17,7 @@ if (THALARIS_API_KEY) {
         console.log("OpenAI client inicializado para Vercel Function.");
     } catch (e) {
         console.error("Error al inicializar OpenAI client en Vercel Function:", e.message, e.stack);
-        openai = null;
+        openai = null; // Asegura que no se use una instancia rota
     }
 } else {
     console.warn("THALARIS_API_KEY NO ESTÁ DEFINIDA. La API de IA no funcionará.");
@@ -27,50 +28,58 @@ export default async function handler(req, res) {
         return res.status(405).json({ message: 'Método no permitido. Solo POST.' });
     }
 
-    // AHORA RECIBIMOS EL MENSAJE Y TAMBIÉN EL HISTORIAL (contexto)
-    const { message, conversationContext } = req.body; // <--- CAMBIO AQUÍ
+    const { message, conversationContext, generateTitle } = req.body; // <--- NUEVO: generateTitle
 
-    if (!message) {
+    if (!message && !generateTitle) { // Si no es para generar título, el mensaje es requerido
         return res.status(400).json({ message: 'El mensaje del usuario es requerido.' });
     }
-    if (!conversationContext || !Array.isArray(conversationContext)) { // Validar que el contexto sea un array
+    if (!conversationContext || !Array.isArray(conversationContext)) {
         return res.status(400).json({ message: 'El contexto de la conversación es requerido y debe ser un array.' });
     }
 
     if (!openai) {
-        console.error("OpenAI client no inicializado en Vercel Function. THALARIS_API_KEY Missing?");
-        return res.status(500).json({ message: 'Error interno: el servicio de IA no está configurado correctamente.' });
+        return res.status(500).json({ message: 'Error interno: el servicio de IA no está configurado.' });
     }
 
     try {
-        // Construir el array de mensajes para la API
-        // Primero el sysprompt
         const messagesForAPI = [{ role: "system", content: SYSPROMPT }];
-
-        // Luego añadir el historial de conversación recibido desde el frontend
-        // Filtrar y mapear para asegurar el formato de la API (role: user/assistant, content: string)
         conversationContext.forEach(msg => {
-            if (msg.sender === 'user' || msg.sender === 'bot') { // Solo mensajes de usuario o bot
+            if (msg.sender === 'user' || msg.sender === 'bot') {
+                 // Usamos stripHtml para los mensajes anteriores si ya están enlazados
                 messagesForAPI.push({
-                    role: msg.sender === 'user' ? 'user' : 'assistant', // Mapear 'bot' a 'assistant' para la API
-                    content: msg.text
+                    role: msg.sender === 'user' ? 'user' : 'assistant',
+                    content: stripHtml(msg.text).result // <--- Limpiar HTML si hay
                 });
             }
         });
+        messagesForAPI.push({ role: "user", content: stripHtml(message).result }); // <--- Limpiar HTML del mensaje actual
 
-        // Finalmente, añadir el mensaje actual del usuario
-        messagesForAPI.push({ role: "user", content: message });
+        let responseText;
 
-
-        const completion = await openai.chat.completions.create({
-            model: MODEL_NAME,
-            messages: messagesForAPI, // <--- Enviamos el array completo
-            temperature: 0.7,
-            max_tokens: 500,
-        });
-
-        const botResponse = completion.choices[0].message.content;
-        res.status(200).json({ text: botResponse });
+        if (generateTitle) {
+            // Lógica para generar título
+            const titleMessages = [
+                { role: "system", content: "Genera un título muy corto (máximo 5-7 palabras, sin comillas, directo, sin introducción) para la siguiente conversación académica. El título debe resumir el tema principal. Ejemplo: 'Ecuaciones Cuadráticas', 'Ley de Newton', 'Revolución Francesa'." },
+                ...messagesForAPI // Usa el contexto de la conversación
+            ];
+            const titleCompletion = await openai.chat.completions.create({
+                model: MODEL_NAME,
+                messages: titleMessages,
+                temperature: 0.5,
+                max_tokens: 20, // Título corto
+            });
+            responseText = titleCompletion.choices[0].message.content.trim();
+        } else {
+            // Lógica normal de chat
+            const completion = await openai.chat.completions.create({
+                model: MODEL_NAME,
+                messages: messagesForAPI,
+                temperature: 0.7,
+                max_tokens: 2000, // Tu límite de tokens para las respuestas
+            });
+            responseText = completion.choices[0].message.content;
+        }
+        res.status(200).json({ text: responseText });
 
     } catch (error) {
         // ... (manejo de errores, sin cambios) ...
@@ -92,4 +101,3 @@ export default async function handler(req, res) {
         }
         res.status(500).json({ message: errorMessageClient });
     }
-}
