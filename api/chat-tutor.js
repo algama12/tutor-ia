@@ -1,13 +1,11 @@
 // api/chat-tutor.js
 import OpenAI from 'openai';
 
-// Variables de entorno (Vercel las inyectará)
-const THALARIS_API_KEY = process.env.THALARIS_API_KEY; // ¡Configura esta en Vercel!
+const THALARIS_API_KEY = process.env.THALARIS_API_KEY;
 const BASE_URL = "https://llmapi.thalarislabs.com";
 const MODEL_NAME = "gemini-2.0-flash";
 const SYSPROMPT = "Eres un tutor académico muy amable y paciente. Tu objetivo es explicar conceptos complejos de forma sencilla, resolver dudas y guiar al estudiante en su aprendizaje. Siempre ofrece ejemplos claros y fomenta la curiosidad. Adapta tus explicaciones al nivel del usuario y al tema. Sé conciso pero completo.";
 
-// Inicializa OpenAI si la API Key está disponible
 let openai = null;
 if (THALARIS_API_KEY) {
     try {
@@ -18,36 +16,25 @@ if (THALARIS_API_KEY) {
         console.log("OpenAI client inicializado para Vercel Function.");
     } catch (e) {
         console.error("Error al inicializar OpenAI client en Vercel Function:", e.message, e.stack);
-        openai = null; // Asegura que no se use una instancia rota
+        openai = null;
     }
 } else {
     console.warn("THALARIS_API_KEY NO ESTÁ DEFINIDA. La API de IA no funcionará.");
 }
 
 export default async function handler(req, res) {
-    // Vercel Serverless Functions manejan CORS automáticamente para el mismo origen.
-    // Si necesitas permitir dominios EXTERNOS (ej. para probar desde Postman/Insomnia),
-    // necesitarías Headers CORS explícitos.
-    /*
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type'); // Si necesitas autorización
-    if (req.method === 'OPTIONS') {
-        return res.status(200).end();
-    }
-    */
-
     if (req.method !== 'POST') {
         return res.status(405).json({ message: 'Método no permitido. Solo POST.' });
     }
 
-    const { message } = req.body;
-
-    // Puedes añadir protección aquí (ej. verificar token de Firebase Auth que el frontend envíe)
-    // Por ahora, cualquier POST a esta función responderá si el mensaje es válido.
+    // AHORA RECIBIMOS EL MENSAJE Y TAMBIÉN EL HISTORIAL (contexto)
+    const { message, conversationContext } = req.body; // <--- CAMBIO AQUÍ
 
     if (!message) {
         return res.status(400).json({ message: 'El mensaje del usuario es requerido.' });
+    }
+    if (!conversationContext || !Array.isArray(conversationContext)) { // Validar que el contexto sea un array
+        return res.status(400).json({ message: 'El contexto de la conversación es requerido y debe ser un array.' });
     }
 
     if (!openai) {
@@ -56,14 +43,28 @@ export default async function handler(req, res) {
     }
 
     try {
-        const messages = [
-            { role: "system", content: SYSPROMPT },
-            { role: "user", content: message },
-        ];
+        // Construir el array de mensajes para la API
+        // Primero el sysprompt
+        const messagesForAPI = [{ role: "system", content: SYSPROMPT }];
+
+        // Luego añadir el historial de conversación recibido desde el frontend
+        // Filtrar y mapear para asegurar el formato de la API (role: user/assistant, content: string)
+        conversationContext.forEach(msg => {
+            if (msg.sender === 'user' || msg.sender === 'bot') { // Solo mensajes de usuario o bot
+                messagesForAPI.push({
+                    role: msg.sender === 'user' ? 'user' : 'assistant', // Mapear 'bot' a 'assistant' para la API
+                    content: msg.text
+                });
+            }
+        });
+
+        // Finalmente, añadir el mensaje actual del usuario
+        messagesForAPI.push({ role: "user", content: message });
+
 
         const completion = await openai.chat.completions.create({
             model: MODEL_NAME,
-            messages: messages,
+            messages: messagesForAPI, // <--- Enviamos el array completo
             temperature: 0.7,
             max_tokens: 500,
         });
@@ -72,9 +73,9 @@ export default async function handler(req, res) {
         res.status(200).json({ text: botResponse });
 
     } catch (error) {
+        // ... (manejo de errores, sin cambios) ...
         console.error("Error al llamar a la API de Thalaris Labs (Vercel):", error);
         let errorMessageClient = "Ocurrió un error al comunicarse con el tutor. Por favor, inténtalo de nuevo más tarde.";
-
         if (error.response) {
             console.error("Detalles del ERROR de respuesta (Vercel):", error.response.status, error.response.data);
             if (error.response.status === 401 || error.response.status === 403) {

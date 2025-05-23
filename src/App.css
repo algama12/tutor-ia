@@ -47,13 +47,12 @@ body {
     border-radius: 12px;
     box-shadow: 0 10px 30px var(--shadow-medium);
     width: 100%;
-    max-width: 700px; /* Aumentado para chats */
+    max-width: 900px; /* <--- Aumentado para la barra lateral (900px) */
     overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    min-height: 600px; /* Ajuste para chats */
-    min-width: 320px; /* Asegura un mínimo */
-    max-height: 90vh; /* Ajuste para pantallas pequeñas */
+    display: flex; /* <--- IMPORTANTE: Usamos flex para sidebar y main chat */
+    min-height: 650px; /* <--- Aumentado si es necesario */
+    min-width: 320px;
+    max-height: 90vh;
 }
 
 /* Estilos comunes de botones */
@@ -65,7 +64,7 @@ button {
     cursor: pointer;
     transition: background-color 0.3s ease, transform 0.2s ease;
     font-weight: 600;
-    white-space: nowrap; /* Evita que el texto del botón se rompa */
+    white-space: nowrap;
 }
 
 button:disabled {
@@ -84,15 +83,15 @@ button:disabled {
     color: var(--primary-color);
 }
 
-/* Responsive adjustments */
 @media (max-width: 768px) {
     #root {
-        padding: 0; /* Elimina padding para pantallas pequeñas */
+        padding: 0;
     }
     .app-container {
-        border-radius: 0; /* Bordes rectos */
-        min-height: 100vh; /* Ocupa toda la altura */
-        max-height: 100vh; /* Ocupa toda la altura */
-        box-shadow: none; /* Sin sombra */
+        border-radius: 0;
+        min-height: 100vh;
+        max-height: 100vh;
+        box-shadow: none;
+        flex-direction: column;
     }
 }
